@@ -168,6 +168,24 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 cur.execute('INSERT INTO teams (name, division, logo_url) VALUES (%s, %s, %s)',
                            (body_data.get('name'), body_data.get('division', 'Первый'), body_data.get('logo_url')))
         
+        elif update_type == 'team_stats':
+            cur.execute('''
+                UPDATE teams SET 
+                played = %s, wins = %s, wins_ot = %s, losses_ot = %s, losses = %s,
+                goals_for = %s, goals_against = %s, points = %s
+                WHERE id = %s
+            ''', (
+                body_data.get('played', 0),
+                body_data.get('wins', 0),
+                body_data.get('wins_ot', 0),
+                body_data.get('losses_ot', 0),
+                body_data.get('losses', 0),
+                body_data.get('goals_for', 0),
+                body_data.get('goals_against', 0),
+                body_data.get('points', 0),
+                body_data.get('id')
+            ))
+        
         elif update_type == 'regulation':
             if body_data.get('id'):
                 cur.execute('UPDATE regulations SET title = %s, content = %s WHERE id = %s',

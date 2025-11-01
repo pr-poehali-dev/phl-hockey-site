@@ -21,15 +21,17 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [leagueInfo, setLeagueInfo] = useState<any>(null);
+  const [teams, setTeams] = useState<any[]>([]);
 
   const checkPassword = async () => {
     if (password === 'phldyez') {
       setIsAuthenticated(true);
       toast.success('Вход выполнен');
       
-      const response = await fetch(`${LEAGUE_DATA_URL}?type=info`);
+      const response = await fetch(`${LEAGUE_DATA_URL}?type=all`);
       const data = await response.json();
       setLeagueInfo(data.info);
+      setTeams(data.teams || []);
     } else {
       toast.error('Неверный пароль');
     }
@@ -162,6 +164,45 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
       
       if (response.ok) {
         toast.success('Команда обновлена');
+        onUpdate();
+      } else {
+        toast.error('Ошибка обновления');
+      }
+    } catch (error) {
+      toast.error('Ошибка сети');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateTeamStats = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      const response = await fetch(LEAGUE_DATA_URL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': password
+        },
+        body: JSON.stringify({
+          type: 'team_stats',
+          id: parseInt(formData.get('team_id') as string),
+          played: parseInt(formData.get('played') as string),
+          wins: parseInt(formData.get('wins') as string),
+          wins_ot: parseInt(formData.get('wins_ot') as string),
+          losses_ot: parseInt(formData.get('losses_ot') as string),
+          losses: parseInt(formData.get('losses') as string),
+          goals_for: parseInt(formData.get('goals_for') as string),
+          goals_against: parseInt(formData.get('goals_against') as string),
+          points: parseInt(formData.get('points') as string)
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Статистика обновлена');
         onUpdate();
       } else {
         toast.error('Ошибка обновления');
@@ -355,10 +396,11 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-6 text-xs">
+          <TabsList className="grid w-full grid-cols-7 text-xs">
             <TabsTrigger value="info">Информация</TabsTrigger>
             <TabsTrigger value="team-create">Добавить команду</TabsTrigger>
             <TabsTrigger value="team-update">Изменить команду</TabsTrigger>
+            <TabsTrigger value="team-stats">Статистика</TabsTrigger>
             <TabsTrigger value="match-create">Создать матч</TabsTrigger>
             <TabsTrigger value="match-update">Обновить матч</TabsTrigger>
             <TabsTrigger value="content">Контент</TabsTrigger>
@@ -461,6 +503,67 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
               </div>
               <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90">
                 {loading ? 'Обновление...' : 'Обновить команду'}
+              </Button>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="team-stats">
+            <form onSubmit={updateTeamStats} className="space-y-4">
+              <div>
+                <Label>Выберите команду</Label>
+                <Select name="team_id" required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите команду" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.map(team => (
+                      <SelectItem key={team.id} value={team.id.toString()}>
+                        {team.name} ({team.division})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <Label>Игры</Label>
+                  <Input name="played" type="number" defaultValue="0" required />
+                </div>
+                <div>
+                  <Label>Победы</Label>
+                  <Input name="wins" type="number" defaultValue="0" required />
+                </div>
+                <div>
+                  <Label>Победы ОТ</Label>
+                  <Input name="wins_ot" type="number" defaultValue="0" required />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <Label>Поражения ОТ</Label>
+                  <Input name="losses_ot" type="number" defaultValue="0" required />
+                </div>
+                <div>
+                  <Label>Поражения</Label>
+                  <Input name="losses" type="number" defaultValue="0" required />
+                </div>
+                <div>
+                  <Label>Очки</Label>
+                  <Input name="points" type="number" defaultValue="0" required />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label>Голы забитые</Label>
+                  <Input name="goals_for" type="number" defaultValue="0" required />
+                </div>
+                <div>
+                  <Label>Голы пропущенные</Label>
+                  <Input name="goals_against" type="number" defaultValue="0" required />
+                </div>
+              </div>
+              <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90">
+                {loading ? 'Сохранение...' : 'Сохранить статистику'}
               </Button>
             </form>
           </TabsContent>
