@@ -22,14 +22,14 @@ def recalculate_standings(cur, conn):
         
         if home_score > away_score:
             if result_type == 'regulation':
-                cur.execute('UPDATE teams SET wins = wins + 1, points = points + 3 WHERE id = %s', (home_id,))
+                cur.execute('UPDATE teams SET wins = wins + 1, points = points + 2 WHERE id = %s', (home_id,))
                 cur.execute('UPDATE teams SET losses = losses + 1 WHERE id = %s', (away_id,))
             else:
                 cur.execute('UPDATE teams SET wins_ot = wins_ot + 1, points = points + 2 WHERE id = %s', (home_id,))
                 cur.execute('UPDATE teams SET losses_ot = losses_ot + 1, points = points + 1 WHERE id = %s', (away_id,))
         else:
             if result_type == 'regulation':
-                cur.execute('UPDATE teams SET wins = wins + 1, points = points + 3 WHERE id = %s', (away_id,))
+                cur.execute('UPDATE teams SET wins = wins + 1, points = points + 2 WHERE id = %s', (away_id,))
                 cur.execute('UPDATE teams SET losses = losses + 1 WHERE id = %s', (home_id,))
             else:
                 cur.execute('UPDATE teams SET wins_ot = wins_ot + 1, points = points + 2 WHERE id = %s', (away_id,))

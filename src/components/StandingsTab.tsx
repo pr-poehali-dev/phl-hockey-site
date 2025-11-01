@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 
 interface Team {
@@ -14,6 +16,7 @@ interface Team {
   goals_for: number;
   goals_against: number;
   points: number;
+  division: string;
 }
 
 interface StandingsTabProps {
@@ -21,10 +24,84 @@ interface StandingsTabProps {
 }
 
 export default function StandingsTab({ teams }: StandingsTabProps) {
-  const sortedTeams = [...teams].sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    return (b.goals_for - b.goals_against) - (a.goals_for - a.goals_against);
-  });
+  const [selectedDivision, setSelectedDivision] = useState('Первый');
+
+  const getTeamsByDivision = (division: string) => {
+    return teams
+      .filter(team => team.division === division)
+      .sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return (b.goals_for - b.goals_against) - (a.goals_for - a.goals_against);
+      });
+  };
+
+  const renderTable = (division: string) => {
+    const divisionTeams = getTeamsByDivision(division);
+
+    if (divisionTeams.length === 0) {
+      return (
+        <div className="py-12 text-center">
+          <Icon name="Table" size={48} className="mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">В этом дивизионе пока нет команд</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent border-border">
+              <TableHead className="w-12 text-center">#</TableHead>
+              <TableHead>Команда</TableHead>
+              <TableHead className="text-center">И</TableHead>
+              <TableHead className="text-center">В</TableHead>
+              <TableHead className="text-center">ВО</TableHead>
+              <TableHead className="text-center">ПО</TableHead>
+              <TableHead className="text-center">П</TableHead>
+              <TableHead className="text-center">Ш</TableHead>
+              <TableHead className="text-center">О</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {divisionTeams.map((team, index) => (
+              <TableRow 
+                key={team.id} 
+                className="hover:bg-primary/5 transition-colors border-border"
+              >
+                <TableCell className="text-center font-bold">
+                  {index + 1}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {team.logo_url ? (
+                      <img src={team.logo_url} alt={team.name} className="w-8 h-8 object-contain" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Icon name="Shield" size={16} className="text-primary" />
+                      </div>
+                    )}
+                    <span className="font-semibold">{team.name}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-center">{team.played}</TableCell>
+                <TableCell className="text-center">{team.wins}</TableCell>
+                <TableCell className="text-center">{team.wins_ot}</TableCell>
+                <TableCell className="text-center">{team.losses_ot}</TableCell>
+                <TableCell className="text-center">{team.losses}</TableCell>
+                <TableCell className="text-center">
+                  {team.goals_for}:{team.goals_against}
+                </TableCell>
+                <TableCell className="text-center">
+                  <span className="font-bold text-primary">{team.points}</span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
 
   return (
     <Card className="bg-card border-border">
@@ -35,58 +112,32 @@ export default function StandingsTab({ teams }: StandingsTabProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent border-border">
-                <TableHead className="w-12 text-center">#</TableHead>
-                <TableHead>Команда</TableHead>
-                <TableHead className="text-center">И</TableHead>
-                <TableHead className="text-center">В</TableHead>
-                <TableHead className="text-center">ВО</TableHead>
-                <TableHead className="text-center">ПО</TableHead>
-                <TableHead className="text-center">П</TableHead>
-                <TableHead className="text-center">Ш</TableHead>
-                <TableHead className="text-center">О</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedTeams.map((team, index) => (
-                <TableRow 
-                  key={team.id} 
-                  className="hover:bg-primary/5 transition-colors border-border"
-                >
-                  <TableCell className="text-center font-bold">
-                    {index + 1}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {team.logo_url ? (
-                        <img src={team.logo_url} alt={team.name} className="w-8 h-8 object-contain" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Icon name="Shield" size={16} className="text-primary" />
-                        </div>
-                      )}
-                      <span className="font-semibold">{team.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">{team.played}</TableCell>
-                  <TableCell className="text-center">{team.wins}</TableCell>
-                  <TableCell className="text-center">{team.wins_ot}</TableCell>
-                  <TableCell className="text-center">{team.losses_ot}</TableCell>
-                  <TableCell className="text-center">{team.losses}</TableCell>
-                  <TableCell className="text-center">
-                    {team.goals_for}:{team.goals_against}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="font-bold text-primary">{team.points}</span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <Tabs value={selectedDivision} onValueChange={setSelectedDivision} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted">
+            <TabsTrigger value="Первый" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Первый дивизион
+            </TabsTrigger>
+            <TabsTrigger value="Второй" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Второй дивизион
+            </TabsTrigger>
+            <TabsTrigger value="Третий" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Третий дивизион
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="Первый">
+            {renderTable('Первый')}
+          </TabsContent>
+
+          <TabsContent value="Второй">
+            {renderTable('Второй')}
+          </TabsContent>
+
+          <TabsContent value="Третий">
+            {renderTable('Третий')}
+          </TabsContent>
+        </Tabs>
+
         <div className="mt-6 p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground">
           <p className="font-semibold mb-2">Обозначения:</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -96,7 +147,7 @@ export default function StandingsTab({ teams }: StandingsTabProps) {
             <div>ПО — Поражения (ОТ/Б)</div>
             <div>П — Поражения (ОВ)</div>
             <div>Ш — Разность шайб</div>
-            <div className="col-span-2">О — Очки</div>
+            <div className="col-span-2">О — Очки (Победа ОВ = 2 очка)</div>
           </div>
         </div>
       </CardContent>

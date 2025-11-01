@@ -46,7 +46,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 }
         
         if data_type in ['all', 'teams']:
-            cur.execute('SELECT * FROM teams ORDER BY points DESC, goals_for - goals_against DESC')
+            cur.execute('SELECT * FROM teams ORDER BY division, points DESC, goals_for - goals_against DESC')
             teams_rows = cur.fetchall()
             result['teams'] = [{
                 'id': row[0],
@@ -60,7 +60,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'goals_for': row[8],
                 'goals_against': row[9],
                 'points': row[10],
-                'position': row[11]
+                'position': row[11],
+                'division': row[12] if len(row) > 12 else 'Первый'
             } for row in teams_rows]
         
         if data_type in ['all', 'matches']:
@@ -156,6 +157,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif update_type == 'team_logo':
             cur.execute('UPDATE teams SET logo_url = %s WHERE id = %s', 
                        (body_data.get('logo_url'), body_data.get('team_id')))
+        
+        elif update_type == 'team':
+            if body_data.get('id'):
+                cur.execute('UPDATE teams SET name = %s, division = %s, logo_url = %s WHERE id = %s',
+                           (body_data.get('name'), body_data.get('division'), body_data.get('logo_url'), body_data.get('id')))
+            else:
+                cur.execute('INSERT INTO teams (name, division, logo_url) VALUES (%s, %s, %s)',
+                           (body_data.get('name'), body_data.get('division', 'Первый'), body_data.get('logo_url')))
         
         elif update_type == 'regulation':
             if body_data.get('id'):
