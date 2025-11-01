@@ -33,7 +33,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         result = {}
         
         if data_type in ['all', 'info']:
-            cur.execute('SELECT * FROM league_info LIMIT 1')
+            cur.execute('SELECT id, title, description, telegram, discord, twitch, logo_url FROM league_info LIMIT 1')
             info_row = cur.fetchone()
             if info_row:
                 result['info'] = {
@@ -43,7 +43,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'telegram': info_row[3],
                     'discord': info_row[4],
                     'twitch': info_row[5],
-                    'logo_url': info_row[6] if len(info_row) > 6 else None
+                    'logo_url': info_row[6]
                 }
         
         if data_type in ['all', 'teams']:
@@ -68,7 +68,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if data_type in ['all', 'matches']:
             cur.execute('''
                 SELECT m.id, m.home_team_id, m.away_team_id, m.home_score, m.away_score, 
-                       m.match_date, m.status, m.result_type,
+                       m.match_date::text, m.status, m.result_type,
                        ht.name as home_team_name, at.name as away_team_name,
                        ht.logo_url as home_logo, at.logo_url as away_logo
                 FROM matches m
@@ -83,7 +83,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'away_team_id': row[2],
                 'home_score': row[3],
                 'away_score': row[4],
-                'match_date': row[5].isoformat() if row[5] else None,
+                'match_date': row[5],
                 'status': row[6],
                 'result_type': row[7],
                 'home_team_name': row[8],

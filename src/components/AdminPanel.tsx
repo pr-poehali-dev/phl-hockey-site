@@ -20,11 +20,16 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [leagueInfo, setLeagueInfo] = useState<any>(null);
 
-  const checkPassword = () => {
+  const checkPassword = async () => {
     if (password === 'phldyez') {
       setIsAuthenticated(true);
       toast.success('Вход выполнен');
+      
+      const response = await fetch(`${LEAGUE_DATA_URL}?type=info`);
+      const data = await response.json();
+      setLeagueInfo(data.info);
     } else {
       toast.error('Неверный пароль');
     }
@@ -368,7 +373,7 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
               <div>
                 <Label>Логотип лиги (в левом верхнем углу)</Label>
                 <Input name="league_logo" type="file" accept="image/*" />
-                <Input name="existing_logo" type="hidden" />
+                <Input name="existing_logo" type="hidden" value={leagueInfo?.logo_url || ''} />
                 <p className="text-xs text-muted-foreground mt-1">Загрузите изображение с компьютера</p>
               </div>
               <div>
