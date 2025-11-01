@@ -51,12 +51,20 @@ export default function Index() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary to-red-800 rounded-lg flex items-center justify-center transform hover:scale-105 transition-transform">
-                <span className="text-2xl">🏒</span>
-              </div>
+              {leagueData?.info?.logo_url ? (
+                <img 
+                  src={leagueData.info.logo_url} 
+                  alt="Логотип лиги" 
+                  className="w-12 h-12 object-contain transform hover:scale-105 transition-transform"
+                />
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-primary to-red-800 rounded-lg flex items-center justify-center transform hover:scale-105 transition-transform">
+                  <span className="text-2xl">🏒</span>
+                </div>
+              )}
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-red-600 bg-clip-text text-transparent">
-                  PHL
+                  {leagueData?.info?.title || 'PHL'}
                 </h1>
                 <p className="text-sm text-muted-foreground">Первая хоккейная лига</p>
               </div>

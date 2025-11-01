@@ -49,6 +49,13 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
     const formData = new FormData(e.currentTarget);
     
     try {
+      let logoUrl = formData.get('existing_logo') as string;
+      const logoFile = (e.currentTarget.elements.namedItem('league_logo') as HTMLInputElement).files?.[0];
+      
+      if (logoFile) {
+        logoUrl = await uploadImage(logoFile);
+      }
+      
       const response = await fetch(LEAGUE_DATA_URL, {
         method: 'PUT',
         headers: {
@@ -61,7 +68,8 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
           description: formData.get('description'),
           telegram: formData.get('telegram'),
           discord: formData.get('discord'),
-          twitch: formData.get('twitch')
+          twitch: formData.get('twitch'),
+          logo_url: logoUrl || null
         })
       });
       
@@ -356,6 +364,12 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
               <div>
                 <Label>Название лиги</Label>
                 <Input name="title" defaultValue="PHL - Первая хоккейная лига" required />
+              </div>
+              <div>
+                <Label>Логотип лиги (в левом верхнем углу)</Label>
+                <Input name="league_logo" type="file" accept="image/*" />
+                <Input name="existing_logo" type="hidden" />
+                <p className="text-xs text-muted-foreground mt-1">Загрузите изображение с компьютера</p>
               </div>
               <div>
                 <Label>Описание</Label>

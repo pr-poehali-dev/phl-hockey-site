@@ -42,7 +42,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'description': info_row[2],
                     'telegram': info_row[3],
                     'discord': info_row[4],
-                    'twitch': info_row[5]
+                    'twitch': info_row[5],
+                    'logo_url': info_row[6] if len(info_row) > 6 else None
                 }
         
         if data_type in ['all', 'teams']:
@@ -144,14 +145,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if update_type == 'info':
             cur.execute('''
                 UPDATE league_info SET 
-                title = %s, description = %s, telegram = %s, discord = %s, twitch = %s
+                title = %s, description = %s, telegram = %s, discord = %s, twitch = %s, logo_url = %s
                 WHERE id = 1
             ''', (
                 body_data.get('title'),
                 body_data.get('description'),
                 body_data.get('telegram'),
                 body_data.get('discord'),
-                body_data.get('twitch')
+                body_data.get('twitch'),
+                body_data.get('logo_url')
             ))
         
         elif update_type == 'team_logo':
