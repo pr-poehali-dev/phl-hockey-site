@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "name": "Get all league data",
+      "method": "GET",
+      "path": "/?type=all",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "info": "object",
+        "teams": "array"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
