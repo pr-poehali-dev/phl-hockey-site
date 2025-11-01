@@ -1,5 +1,7 @@
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 
 interface Match {
@@ -13,6 +15,8 @@ interface Match {
   result_type: string | null;
   home_logo: string | null;
   away_logo: string | null;
+  home_team_division?: string;
+  away_team_division?: string;
 }
 
 interface ScheduleTabProps {
@@ -40,6 +44,9 @@ const getStatusBadge = (status: string, resultType: string | null) => {
 };
 
 export default function ScheduleTab({ matches, teams, onUpdate }: ScheduleTabProps) {
+  const [selectedDivision, setSelectedDivision] = useState<string>('Первый');
+  const [displayLimit, setDisplayLimit] = useState(20);
+
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Дата не указана';
     const date = new Date(dateString);
@@ -52,15 +59,62 @@ export default function ScheduleTab({ matches, teams, onUpdate }: ScheduleTabPro
     }).format(date);
   };
 
-  const sortedMatches = [...matches].sort((a, b) => {
-    const dateA = new Date(a.match_date || 0).getTime();
-    const dateB = new Date(b.match_date || 0).getTime();
-    return dateB - dateA;
-  });
+  const matchesWithDivision = useMemo(() => {
+    return matches.map(match => {
+      const homeTeam = teams.find(t => t.name === match.home_team_name);
+      const awayTeam = teams.find(t => t.name === match.away_team_name);
+      return {
+        ...match,
+        home_team_division: homeTeam?.division,
+        away_team_division: awayTeam?.division
+      };
+    });
+  }, [matches, teams]);
+
+  const filteredMatches = useMemo(() => {
+    return matchesWithDivision.filter(match => 
+      match.home_team_division === selectedDivision || match.away_team_division === selectedDivision
+    );
+  }, [matchesWithDivision, selectedDivision]);
+
+  const sortedMatches = useMemo(() => {
+    return [...filteredMatches].sort((a, b) => {
+      const dateA = new Date(a.match_date || 0).getTime();
+      const dateB = new Date(b.match_date || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [filteredMatches]);
+
+  const displayedMatches = sortedMatches.slice(0, displayLimit);
+  const hasMore = sortedMatches.length > displayLimit;
 
   return (
     <div className="space-y-4">
-      {sortedMatches.length === 0 ? (
+      <div className="flex gap-2 flex-wrap">
+        <Button 
+          onClick={() => setSelectedDivision('Первый')}
+          variant={selectedDivision === 'Первый' ? 'default' : 'outline'}
+          size="sm"
+        >
+          Первый дивизион
+        </Button>
+        <Button 
+          onClick={() => setSelectedDivision('Второй')}
+          variant={selectedDivision === 'Второй' ? 'default' : 'outline'}
+          size="sm"
+        >
+          Второй дивизион
+        </Button>
+        <Button 
+          onClick={() => setSelectedDivision('Третий')}
+          variant={selectedDivision === 'Третий' ? 'default' : 'outline'}
+          size="sm"
+        >
+          Третий дивизион
+        </Button>
+      </div>
+
+      {displayedMatches.length === 0 ? (
         <Card className="bg-card border-border">
           <CardContent className="py-12 text-center">
             <Icon name="Calendar" size={48} className="mx-auto mb-4 text-muted-foreground" />
@@ -68,7 +122,8 @@ export default function ScheduleTab({ matches, teams, onUpdate }: ScheduleTabPro
           </CardContent>
         </Card>
       ) : (
-        sortedMatches.map((match) => (
+        <>
+        {displayedMatches.map((match) => (
           <Card 
             key={match.id} 
             className="bg-card border-border hover:border-primary/50 transition-all hover:shadow-lg"
@@ -121,7 +176,18 @@ export default function ScheduleTab({ matches, teams, onUpdate }: ScheduleTabPro
               </div>
             </CardContent>
           </Card>
-        ))
+        ))}
+        {hasMore && (
+          <div className="text-center py-4">
+            <Button 
+              onClick={() => setDisplayLimit(prev => prev + 20)}
+              variant="outline"
+            >
+              Показать ещё ({sortedMatches.length - displayLimit})
+            </Button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

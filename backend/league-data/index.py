@@ -17,7 +17,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password',
                 'Access-Control-Max-Age': '86400'
             },
@@ -186,6 +186,25 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 body_data.get('id')
             ))
         
+        elif update_type == 'team_position':
+            team_id = body_data.get('id')
+            direction = body_data.get('direction')
+            
+            cur.execute('SELECT id, position FROM teams ORDER BY position')
+            all_teams = cur.fetchall()
+            team_positions = {t[0]: idx for idx, t in enumerate(all_teams)}
+            
+            if team_id in team_positions:
+                current_idx = team_positions[team_id]
+                if direction == 'up' and current_idx > 0:
+                    swap_team_id = all_teams[current_idx - 1][0]
+                    cur.execute('UPDATE teams SET position = position + 1 WHERE id = %s', (swap_team_id,))
+                    cur.execute('UPDATE teams SET position = position - 1 WHERE id = %s', (team_id,))
+                elif direction == 'down' and current_idx < len(all_teams) - 1:
+                    swap_team_id = all_teams[current_idx + 1][0]
+                    cur.execute('UPDATE teams SET position = position - 1 WHERE id = %s', (swap_team_id,))
+                    cur.execute('UPDATE teams SET position = position + 1 WHERE id = %s', (team_id,))
+        
         elif update_type == 'regulation':
             if body_data.get('id'):
                 cur.execute('UPDATE regulations SET title = %s, content = %s WHERE id = %s',
@@ -203,6 +222,38 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 cur.execute('INSERT INTO champions (season, team_name, description, year) VALUES (%s, %s, %s, %s)',
                            (body_data.get('season'), body_data.get('team_name'), 
                             body_data.get('description'), body_data.get('year')))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'isBase64Encoded': False,
+            'body': json.dumps({'success': True})
+        }
+    
+    if method == 'DELETE':
+        headers = {k.lower(): v for k, v in event.get('headers', {}).items()}
+        password = headers.get('x-admin-password', '')
+        if password != 'phldyez':
+            cur.close()
+            conn.close()
+            return {
+                'statusCode': 403,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'isBase64Encoded': False,
+                'body': json.dumps({'error': 'Invalid password'})
+            }
+        
+        body_data = json.loads(event.get('body', '{}'))
+        delete_type = body_data.get('type')
+        
+        if delete_type == 'team':
+            cur.execute('DELETE FROM teams WHERE id = %s', (body_data.get('id'),))
+        elif delete_type == 'regulation':
+            cur.execute('DELETE FROM regulations WHERE id = %s', (body_data.get('id'),))
         
         conn.commit()
         cur.close()

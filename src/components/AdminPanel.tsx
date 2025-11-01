@@ -22,6 +22,9 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
   const [loading, setLoading] = useState(false);
   const [leagueInfo, setLeagueInfo] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
+  const [regulations, setRegulations] = useState<any[]>([]);
+  const [createDivision, setCreateDivision] = useState('Первый');
+  const [updateDivision, setUpdateDivision] = useState('Первый');
 
   const checkPassword = async () => {
     if (password === 'phldyez') {
@@ -32,22 +35,47 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
       const data = await response.json();
       setLeagueInfo(data.info);
       setTeams(data.teams || []);
+      setRegulations(data.regulations || []);
+      setRegulations(data.regulations || []);
     } else {
       toast.error('Неверный пароль');
     }
   };
 
   const uploadImage = async (file: File): Promise<string> => {
+    if (!file) {
+      throw new Error('Файл не выбран');
+    }
+
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Файл должен быть изображением');
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await fetch('https://api.poehali.dev/upload-image', {
-      method: 'POST',
-      body: formData
-    });
-    
-    const data = await response.json();
-    return data.url;
+    try {
+      const response = await fetch('https://api.poehali.dev/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Ошибка загрузки: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.url) {
+        throw new Error('URL изображения не получен');
+      }
+      
+      return data.url;
+    } catch (error) {
+      console.error('Ошибка загрузки изображения:', error);
+      toast.error('Не удалось загрузить изображение');
+      throw error;
+    }
   };
 
   const updateLeagueInfo = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -103,7 +131,15 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
       const logoFile = (e.currentTarget.elements.namedItem('logo') as HTMLInputElement).files?.[0];
       
       if (logoFile) {
-        logoUrl = await uploadImage(logoFile);
+        try {
+          toast.info('Загружаю логотип...');
+          logoUrl = await uploadImage(logoFile);
+          toast.success('Логотип загружен');
+        } catch (uploadError) {
+          console.error('Ошибка загрузки логотипа:', uploadError);
+          setLoading(false);
+          return;
+        }
       }
       
       const response = await fetch(LEAGUE_DATA_URL, {
@@ -115,20 +151,26 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
         body: JSON.stringify({
           type: 'team',
           name: formData.get('team_name'),
-          division: formData.get('division'),
+          division: createDivision,
           logo_url: logoUrl || null
         })
       });
       
       if (response.ok) {
         toast.success('Команда добавлена');
+        const resp = await fetch(`${LEAGUE_DATA_URL}?type=all`);
+        const data = await resp.json();
+        setTeams(data.teams || []);
         onUpdate();
         (e.target as HTMLFormElement).reset();
+        setCreateDivision('Первый');
       } else {
-        toast.error('Ошибка добавления команды');
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.error || 'Ошибка добавления команды');
       }
     } catch (error) {
-      toast.error('Ошибка сети');
+      console.error('Ошибка создания команды:', error);
+      toast.error(error instanceof Error ? error.message : 'Ошибка сети');
     } finally {
       setLoading(false);
     }
@@ -144,7 +186,15 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
       const logoFile = (e.currentTarget.elements.namedItem('logo') as HTMLInputElement).files?.[0];
       
       if (logoFile) {
-        logoUrl = await uploadImage(logoFile);
+        try {
+          toast.info('Загружаю новый логотип...');
+          logoUrl = await uploadImage(logoFile);
+          toast.success('Логотип загружен');
+        } catch (uploadError) {
+          console.error('Ошибка загрузки логотипа:', uploadError);
+          setLoading(false);
+          return;
+        }
       }
       
       const response = await fetch(LEAGUE_DATA_URL, {
@@ -157,16 +207,54 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
           type: 'team',
           id: parseInt(formData.get('team_id') as string),
           name: formData.get('team_name'),
-          division: formData.get('division'),
+          division: updateDivision,
           logo_url: logoUrl || null
         })
       });
       
       if (response.ok) {
         toast.success('Команда обновлена');
+        const resp = await fetch(`${LEAGUE_DATA_URL}?type=all`);
+        const data = await resp.json();
+        setTeams(data.teams || []);
         onUpdate();
       } else {
-        toast.error('Ошибка обновления');
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.error || 'Ошибка обновления');
+      }
+    } catch (error) {
+      console.error('Ошибка обновления команды:', error);
+      toast.error(error instanceof Error ? error.message : 'Ошибка сети');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteTeam = async (teamId: number) => {
+    if (!confirm('Вы уверены что хотите удалить команду? Это действие необратимо.')) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(LEAGUE_DATA_URL, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': password
+        },
+        body: JSON.stringify({
+          type: 'team',
+          id: teamId
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Команда удалена');
+        const resp = await fetch(`${LEAGUE_DATA_URL}?type=all`);
+        const data = await resp.json();
+        setTeams(data.teams || []);
+        onUpdate();
+      } else {
+        toast.error('Ошибка удаления команды');
       }
     } catch (error) {
       toast.error('Ошибка сети');
@@ -204,6 +292,42 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
       if (response.ok) {
         toast.success('Статистика обновлена');
         onUpdate();
+      } else {
+        toast.error('Ошибка обновления');
+      }
+    } catch (error) {
+      toast.error('Ошибка сети');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateRegulation = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      const response = await fetch(LEAGUE_DATA_URL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': password
+        },
+        body: JSON.stringify({
+          type: 'regulation',
+          id: parseInt(formData.get('regulation_id') as string),
+          title: formData.get('title'),
+          content: formData.get('content')
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Регламент обновлён');
+        onUpdate();
+        const res = await fetch(`${LEAGUE_DATA_URL}?type=all`);
+        const data = await res.json();
+        setRegulations(data.regulations || []);
       } else {
         toast.error('Ошибка обновления');
       }
@@ -307,6 +431,9 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
       
       if (response.ok) {
         toast.success('Пункт регламента добавлен');
+        const resp = await fetch(`${LEAGUE_DATA_URL}?type=all`);
+        const data = await resp.json();
+        setRegulations(data.regulations || []);
         onUpdate();
         (e.target as HTMLFormElement).reset();
       } else {
@@ -346,6 +473,75 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
         (e.target as HTMLFormElement).reset();
       } else {
         toast.error('Ошибка добавления');
+      }
+    } catch (error) {
+      toast.error('Ошибка сети');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateRegulation = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      const response = await fetch(LEAGUE_DATA_URL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': password
+        },
+        body: JSON.stringify({
+          type: 'regulation',
+          id: parseInt(formData.get('regulation_id') as string),
+          title: formData.get('title'),
+          content: formData.get('content')
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Регламент обновлён');
+        const resp = await fetch(`${LEAGUE_DATA_URL}?type=all`);
+        const data = await resp.json();
+        setRegulations(data.regulations || []);
+        onUpdate();
+      } else {
+        toast.error('Ошибка обновления');
+      }
+    } catch (error) {
+      toast.error('Ошибка сети');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteRegulation = async (regId: number) => {
+    if (!confirm('Вы уверены что хотите удалить пункт регламента?')) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(LEAGUE_DATA_URL, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Password': password
+        },
+        body: JSON.stringify({
+          type: 'regulation',
+          id: regId
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Пункт удалён');
+        const resp = await fetch(`${LEAGUE_DATA_URL}?type=all`);
+        const data = await resp.json();
+        setRegulations(data.regulations || []);
+        onUpdate();
+      } else {
+        toast.error('Ошибка удаления');
       }
     } catch (error) {
       toast.error('Ошибка сети');
@@ -396,13 +592,14 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-7 text-xs">
+          <TabsList className="grid w-full grid-cols-8 text-xs">
             <TabsTrigger value="info">Информация</TabsTrigger>
-            <TabsTrigger value="team-create">Добавить команду</TabsTrigger>
-            <TabsTrigger value="team-update">Изменить команду</TabsTrigger>
+            <TabsTrigger value="team-create">Добавить</TabsTrigger>
+            <TabsTrigger value="team-update">Изменить</TabsTrigger>
+            <TabsTrigger value="team-delete">Удалить</TabsTrigger>
             <TabsTrigger value="team-stats">Статистика</TabsTrigger>
-            <TabsTrigger value="match-create">Создать матч</TabsTrigger>
-            <TabsTrigger value="match-update">Обновить матч</TabsTrigger>
+            <TabsTrigger value="match-create">Матч</TabsTrigger>
+            <TabsTrigger value="match-update">Обновить</TabsTrigger>
             <TabsTrigger value="content">Контент</TabsTrigger>
           </TabsList>
 
@@ -450,7 +647,7 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
               </div>
               <div>
                 <Label>Дивизион</Label>
-                <Select name="division" defaultValue="Первый">
+                <Select value={createDivision} onValueChange={setCreateDivision}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -485,7 +682,7 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
               </div>
               <div>
                 <Label>Дивизион</Label>
-                <Select name="division" defaultValue="Первый">
+                <Select value={updateDivision} onValueChange={setUpdateDivision}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -505,6 +702,53 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
                 {loading ? 'Обновление...' : 'Обновить команду'}
               </Button>
             </form>
+          </TabsContent>
+
+          <TabsContent value="team-delete">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Управление командами: удаление и изменение позиций</p>
+              <div className="space-y-2">
+                {teams.map((team, index) => (
+                  <div key={team.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {team.logo_url && (
+                        <img src={team.logo_url} alt={team.name} className="w-8 h-8 object-contain" />
+                      )}
+                      <div>
+                        <p className="font-medium">{team.name}</p>
+                        <p className="text-xs text-muted-foreground">{team.division} дивизион · Позиция {index + 1}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => moveTeamPosition(team.id, 'up')} 
+                        disabled={loading || index === 0}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Icon name="ArrowUp" size={16} />
+                      </Button>
+                      <Button 
+                        onClick={() => moveTeamPosition(team.id, 'down')} 
+                        disabled={loading || index === teams.length - 1}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Icon name="ArrowDown" size={16} />
+                      </Button>
+                      <Button 
+                        onClick={() => deleteTeam(team.id)} 
+                        disabled={loading}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        <Icon name="Trash2" size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="team-stats">
@@ -646,6 +890,60 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
 
           <TabsContent value="content">
             <div className="space-y-6">
+              <div className="border-b border-border pb-6">
+                <h3 className="font-semibold mb-4">Список регламента</h3>
+                <div className="space-y-2">
+                  {regulations.map(reg => (
+                    <div key={reg.id} className="flex items-start justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium">{reg.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{reg.content}</p>
+                      </div>
+                      <Button 
+                        onClick={() => deleteRegulation(reg.id)} 
+                        disabled={loading}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        <Icon name="Trash2" size={16} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-b border-border pb-6">
+                <h3 className="font-semibold mb-4">Редактировать пункт регламента</h3>
+                <form onSubmit={updateRegulation} className="space-y-4">
+                  <div>
+                    <Label>Выберите пункт</Label>
+                    <Select name="regulation_id" required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите пункт регламента" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {regulations.map(reg => (
+                          <SelectItem key={reg.id} value={reg.id.toString()}>
+                            {reg.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Новый заголовок</Label>
+                    <Input name="title" required />
+                  </div>
+                  <div>
+                    <Label>Новое содержание</Label>
+                    <Textarea name="content" rows={5} required />
+                  </div>
+                  <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90">
+                    {loading ? 'Сохранение...' : 'Сохранить изменения'}
+                  </Button>
+                </form>
+              </div>
+
               <div className="border-b border-border pb-6">
                 <h3 className="font-semibold mb-4">Добавить пункт регламента</h3>
                 <form onSubmit={addRegulation} className="space-y-4">
