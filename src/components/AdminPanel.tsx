@@ -596,7 +596,7 @@ export default function AdminPanel({ onUpdate }: AdminPanelProps) {
             <TabsTrigger value="info">Информация</TabsTrigger>
             <TabsTrigger value="team-create">Добавить</TabsTrigger>
             <TabsTrigger value="team-update">Изменить</TabsTrigger>
-            <TabsTrigger value="team-delete">Удалить</TabsTrigger>
+            <TabsTrigger value="team-delete">Управление</TabsTrigger>
             <TabsTrigger value="team-stats">Статистика</TabsTrigger>
             <TabsTrigger value="match-create">Матч</TabsTrigger>
             <TabsTrigger value="match-update">Обновить</TabsTrigger>
